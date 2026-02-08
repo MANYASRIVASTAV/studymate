@@ -1,6 +1,6 @@
 # server.py
 # ----------------------------
-# FINAL FULL SERVER
+# FINAL FULL SERVER (ALL PAGES)
 # ----------------------------
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -16,31 +16,24 @@ app = FastAPI()
 
 
 # ----------------------------
-# Serve Frontend Folder
+# Paths
 # ----------------------------
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Serve static files (css/js)
+
+# ----------------------------
+# Serve All Static Files
+# ----------------------------
+
 app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
 
 
 # ----------------------------
-# Helper: Generate Room ID
-# ----------------------------
-
-def generate_room():
-    return "".join(
-        random.choices(string.ascii_uppercase + string.digits, k=6)
-    )
-
-
-# ----------------------------
-# Store Rooms in Memory
+# Store Rooms
 # ----------------------------
 
 rooms = {}
-
 connections = []
 
 
@@ -50,16 +43,22 @@ connections = []
 
 @app.get("/")
 def home():
-    return {"status": "StudyMate Running"}
+    return FileResponse(os.path.join(BASE_DIR, "INDEX.html"))
 
 
 # ----------------------------
-# Serve Group Page
+# Serve Any HTML Page
 # ----------------------------
 
-@app.get("/group")
-def group_page():
-    return FileResponse(os.path.join(BASE_DIR, "group.html"))
+@app.get("/{page}")
+def serve_pages(page: str):
+
+    file_path = os.path.join(BASE_DIR, page)
+
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+
+    return {"error": "Page not found"}
 
 
 # ----------------------------
@@ -86,10 +85,15 @@ async def websocket_endpoint(ws: WebSocket):
             room = msg.get("room")
 
 
-            # ---------------- CREATE ROOM ----------------
+            # CREATE ROOM
             if action == "create":
 
-                room = generate_room()
+                room = "".join(
+                    random.choices(
+                        string.ascii_uppercase + string.digits,
+                        k=6
+                    )
+                )
 
                 rooms[room] = {}
 
@@ -105,7 +109,7 @@ async def websocket_endpoint(ws: WebSocket):
                 })
 
 
-            # ---------------- JOIN ROOM ----------------
+            # JOIN ROOM
             elif action == "join":
 
                 if room not in rooms:
@@ -124,7 +128,6 @@ async def websocket_endpoint(ws: WebSocket):
                 }
 
 
-                # Broadcast update
                 for conn in connections:
                     await conn.send_json({
                         "type": "joined",
@@ -133,7 +136,7 @@ async def websocket_endpoint(ws: WebSocket):
                     })
 
 
-            # ---------------- UPDATE ----------------
+            # UPDATE
             elif action == "update":
 
                 if room not in rooms:
@@ -144,10 +147,9 @@ async def websocket_endpoint(ws: WebSocket):
 
 
                 rooms[room][user]["time"] = msg["time"]
-                rooms[room]["status"] = msg["status"]
+                rooms[room][user]["status"] = msg["status"]
 
 
-                # Broadcast update
                 for conn in connections:
                     await conn.send_json({
                         "type": "update",
