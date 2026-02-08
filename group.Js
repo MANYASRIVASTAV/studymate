@@ -1,92 +1,144 @@
-// group.js
-// --------------------------------
-// WebSocket Client (FastAPI)
-// --------------------------------
+// =====================================
+// StudyMate - Group Study (FINAL JS)
+// =====================================
 
 
-// Connect to backend
-const socket = new WebSocket(
-  location.protocol === "https:"
-    ? "wss://" + location.host + "/ws"
-    : "ws://" + location.host + "/ws"
-);
+// -----------------------------
+// GLOBAL VARIABLES
+// -----------------------------
+
+let socket;              // WebSocket object
+let socketReady = false; // Is socket connected?
+
+let username = "";       // User name
+let currentRoom = "";    // Current room ID
+
+let seconds = 0;         // Timer seconds
+let timer = null;        // setInterval reference
 
 
-// Username
-let username = "";
+
+// -----------------------------
+// CONNECT TO BACKEND
+// -----------------------------
+
+function connectSocket() {
+
+    // Decide ws or wss automatically
+    const protocol =
+        window.location.protocol === "https:" ? "wss://" : "ws://";
+
+    // Create socket connection
+    socket = new WebSocket(
+        protocol + window.location.host + "/ws"
+    );
 
 
-// Variables
-let currentRoom = "";
-let seconds = 0;
-let timer = null;
+    // When connected
+    socket.onopen = () => {
+
+        console.log("✅ WebSocket Connected");
+        socketReady = true;
+    };
 
 
-// Connected
-socket.onopen = () => {
+    // If error
+    socket.onerror = (err) => {
 
-    console.log("Connected to backend ✅");
-};
-
-
-// Messages
-socket.onmessage = (event) => {
-
-    let data = JSON.parse(event.data);
+        console.log("❌ WebSocket Error", err);
+    };
 
 
-    // Created
-    if (data.type === "created") {
+    // When disconnected
+    socket.onclose = () => {
 
-        currentRoom = data.room;
+        console.log("⚠️ Socket Closed. Reconnecting...");
 
-        document.getElementById("roomInfo").innerText =
-            "Connected: " + currentRoom;
+        socketReady = false;
 
-        renderMembers(data.members);
-    }
-
-
-    // Joined
-    if (data.type === "joined") {
-
-        currentRoom = data.room;
-
-        document.getElementById("roomInfo").innerText =
-            "Connected: " + currentRoom;
-
-        renderMembers(data.members);
-    }
+        // Try reconnect after 2 sec
+        setTimeout(connectSocket, 2000);
+    };
 
 
-    // Update
-    if (data.type === "update") {
+    // When message comes from server
+    socket.onmessage = (event) => {
 
-        renderMembers(data.members);
-    }
-
-
-    // Error
-    if (data.type === "error") {
-
-        alert(data.msg);
-    }
-};
+        let data = JSON.parse(event.data);
 
 
-// Create Room
+        // When room created
+        if (data.type === "created") {
+
+            currentRoom = data.room;
+
+            document.getElementById("roomInfo").innerText =
+                "Connected: " + currentRoom;
+
+            renderMembers(data.members);
+        }
+
+
+        // When joined
+        if (data.type === "joined") {
+
+            currentRoom = data.room;
+
+            document.getElementById("roomInfo").innerText =
+                "Connected: " + currentRoom;
+
+            renderMembers(data.members);
+        }
+
+
+        // When members update
+        if (data.type === "update") {
+
+            renderMembers(data.members);
+        }
+
+
+        // When error
+        if (data.type === "error") {
+
+            alert(data.msg);
+        }
+    };
+}
+
+
+// Start socket when page loads
+connectSocket();
+
+
+
+// -----------------------------
+// CREATE ROOM
+// -----------------------------
+
 function createRoom() {
 
-    username =
-        document.getElementById("nameInput").value.trim();
+    // Check socket
+    if (!socketReady) {
 
-    if (!username) {
-
-        alert("Enter your name");
+        alert("Connecting... Please wait");
         return;
     }
 
 
+    // Get name
+    username =
+        document.getElementById("nameInput").value.trim();
+
+
+    if (!username) {
+
+        alert("Enter your name first");
+        return;
+    }
+
+
+    // Send to server
     socket.send(JSON.stringify({
 
         action: "create",
@@ -96,9 +148,22 @@ function createRoom() {
 }
 
 
-// Join Room
+
+// -----------------------------
+// JOIN ROOM
+// -----------------------------
+
 function joinRoom() {
 
+    // Check socket
+    if (!socketReady) {
+
+        alert("Connecting... Please wait");
+        return;
+    }
+
+
+    // Get values
     username =
         document.getElementById("nameInput").value.trim();
 
@@ -113,6 +178,7 @@ function joinRoom() {
     }
 
 
+    // Send to server
     socket.send(JSON.stringify({
 
         action: "join",
@@ -123,7 +189,11 @@ function joinRoom() {
 }
 
 
-// Start Study
+
+// -----------------------------
+// START STUDY
+// -----------------------------
+
 function startStudy() {
 
     if (!currentRoom) {
@@ -132,7 +202,9 @@ function startStudy() {
         return;
     }
 
+
     clearInterval(timer);
+
 
     timer = setInterval(() => {
 
@@ -146,7 +218,11 @@ function startStudy() {
 }
 
 
-// Stop Study
+
+// -----------------------------
+// STOP STUDY
+// -----------------------------
+
 function stopStudy() {
 
     clearInterval(timer);
@@ -155,8 +231,16 @@ function stopStudy() {
 }
 
 
-// Send Update
+
+// -----------------------------
+// SEND UPDATE TO SERVER
+// -----------------------------
+
 function sendUpdate(status) {
+
+    // Check socket
+    if (!socketReady) return;
+
 
     socket.send(JSON.stringify({
 
@@ -170,18 +254,27 @@ function sendUpdate(status) {
 }
 
 
-// UI
+
+// -----------------------------
+// UPDATE TIMER UI
+// -----------------------------
+
 function updateUI() {
 
     let min = Math.floor(seconds / 60);
     let sec = seconds % 60;
+
 
     document.getElementById("timer").innerText =
         min + ":" + (sec < 10 ? "0" + sec : sec);
 }
 
 
-// Members
+
+// -----------------------------
+// SHOW MEMBERS
+// -----------------------------
+
 function renderMembers(members) {
 
     let box =
@@ -193,6 +286,7 @@ function renderMembers(members) {
     for (let user in members) {
 
         let info = members[user];
+
 
         let icon =
             info.status === "studying"
@@ -212,7 +306,7 @@ function renderMembers(members) {
 
                 <span>${icon}</span>
 
-                <span>${min}:${sec < 10 ? "0"+sec : sec}</span>
+                <span>${min}:${sec < 10 ? "0" + sec : sec}</span>
 
             </div>
 
