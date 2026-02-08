@@ -1,10 +1,9 @@
-// ===================================
-// StudyMate Group - FINAL FIX
-// ===================================
+// ================================
+// StudyMate Group Study - FINAL
+// ================================
 
 
-// ---------------- VARIABLES ----------------
-
+// GLOBAL VARIABLES
 let socket;
 let socketReady = false;
 
@@ -15,11 +14,10 @@ let seconds = 0;
 let timer = null;
 
 
-// ---------------- SOCKET CONNECT ----------------
-
+// CONNECT TO SERVER
 function connectSocket() {
 
-    const protocol =
+    var protocol =
         location.protocol === "https:" ? "wss://" : "ws://";
 
     socket = new WebSocket(
@@ -27,20 +25,20 @@ function connectSocket() {
     );
 
 
-    socket.onopen = () => {
-        console.log("✅ Connected");
+    socket.onopen = function () {
+        console.log("Connected");
         socketReady = true;
     };
 
 
-    socket.onerror = (e) => {
-        console.log("❌ Socket Error", e);
+    socket.onerror = function (e) {
+        console.log("Socket error", e);
     };
 
 
-    socket.onclose = () => {
+    socket.onclose = function () {
 
-        console.log("⚠️ Disconnected... Reconnecting");
+        console.log("Disconnected, reconnecting...");
 
         socketReady = false;
 
@@ -48,12 +46,11 @@ function connectSocket() {
     };
 
 
-    socket.onmessage = (event) => {
+    socket.onmessage = function (event) {
 
-        const data = JSON.parse(event.data);
+        var data = JSON.parse(event.data);
 
 
-        // Room created
         if (data.type === "created") {
 
             currentRoom = data.room;
@@ -65,7 +62,6 @@ function connectSocket() {
         }
 
 
-        // Room joined
         if (data.type === "joined") {
 
             currentRoom = data.room;
@@ -77,14 +73,12 @@ function connectSocket() {
         }
 
 
-        // Update
         if (data.type === "update") {
 
             renderMembers(data.members);
         }
 
 
-        // Error
         if (data.type === "error") {
 
             alert(data.msg);
@@ -93,32 +87,15 @@ function connectSocket() {
 }
 
 
-// Start socket
+// START SOCKET
 connectSocket();
 
 
-// ---------------- BUTTON EVENTS ----------------
-
-// Wait till page loads
-window.onload = () => {
-
-    document
-        .getElementById("createBtn")
-        .addEventListener("click", createRoom);
-
-    document
-        .getElementById("joinBtn")
-        .addEventListener("click", joinRoom);
-};
-
-
-// ---------------- CREATE ROOM ----------------
-
+// CREATE ROOM
 function createRoom() {
 
     if (!socketReady) {
-
-        alert("Connecting... wait");
+        alert("Connecting... please wait");
         return;
     }
 
@@ -127,9 +104,9 @@ function createRoom() {
         document.getElementById("nameInput").value.trim();
 
 
-    if (!username) {
+    if (username === "") {
 
-        alert("Enter name");
+        alert("Enter your name");
         return;
     }
 
@@ -143,13 +120,11 @@ function createRoom() {
 }
 
 
-// ---------------- JOIN ROOM ----------------
-
+// JOIN ROOM
 function joinRoom() {
 
     if (!socketReady) {
-
-        alert("Connecting... wait");
+        alert("Connecting... please wait");
         return;
     }
 
@@ -157,13 +132,13 @@ function joinRoom() {
     username =
         document.getElementById("nameInput").value.trim();
 
-    let room =
+    var room =
         document.getElementById("roomInput").value.trim();
 
 
-    if (!username || !room) {
+    if (username === "" || room === "") {
 
-        alert("Enter name & room");
+        alert("Enter name and room ID");
         return;
     }
 
@@ -178,11 +153,10 @@ function joinRoom() {
 }
 
 
-// ---------------- START ----------------
-
+// START STUDY
 function startStudy() {
 
-    if (!currentRoom) {
+    if (currentRoom === "") {
 
         alert("Join room first");
         return;
@@ -192,7 +166,7 @@ function startStudy() {
     clearInterval(timer);
 
 
-    timer = setInterval(() => {
+    timer = setInterval(function () {
 
         seconds++;
 
@@ -204,8 +178,7 @@ function startStudy() {
 }
 
 
-// ---------------- STOP ----------------
-
+// STOP STUDY
 function stopStudy() {
 
     clearInterval(timer);
@@ -214,8 +187,7 @@ function stopStudy() {
 }
 
 
-// ---------------- SEND UPDATE ----------------
-
+// SEND UPDATE
 function sendUpdate(status) {
 
     if (!socketReady) return;
@@ -233,12 +205,11 @@ function sendUpdate(status) {
 }
 
 
-// ---------------- UI ----------------
-
+// UPDATE TIMER UI
 function updateUI() {
 
-    let min = Math.floor(seconds / 60);
-    let sec = seconds % 60;
+    var min = Math.floor(seconds / 60);
+    var sec = seconds % 60;
 
 
     document.getElementById("timer").innerText =
@@ -246,43 +217,39 @@ function updateUI() {
 }
 
 
-// ---------------- MEMBERS ----------------
-
+// SHOW MEMBERS
 function renderMembers(members) {
 
-    let box =
+    var box =
         document.getElementById("members");
 
     box.innerHTML = "";
 
 
-    for (let user in members) {
+    for (var user in members) {
 
-        let info = members[user];
+        var info = members[user];
 
 
-        let icon =
+        var icon =
             info.status === "studying"
-                ? "🟢"
-                : "🔴";
+                ? "ONLINE"
+                : "OFFLINE";
 
 
-        let min = Math.floor(info.time / 60);
-        let sec = info.time % 60;
+        var min = Math.floor(info.time / 60);
+        var sec = info.time % 60;
 
 
-        box.innerHTML += `
+        box.innerHTML +=
 
-            <div class="member">
-
-                <span>${user}</span>
-
-                <span>${icon}</span>
-
-                <span>${min}:${sec < 10 ? "0" + sec : sec}</span>
-
-            </div>
-
-        `;
+            "<div class='member'>" +
+            "<span>" + user + "</span>" +
+            "<span>" + icon + "</span>" +
+            "<span>" + min + ":" +
+            (sec < 10 ? "0" + sec : sec) +
+            "</span>" +
+            "</div>";
     }
 }
+
