@@ -1,11 +1,7 @@
-# server.py
-
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-
 import os
-import json
 import random
 import string
 
@@ -13,61 +9,87 @@ import string
 app = FastAPI()
 
 
-# Project root (studymate folder)
+# ================= PATH =================
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-# Serve everything (html, css, js) from root
+# ================= STATIC =================
+
 app.mount(
-    "/",
-    StaticFiles(directory=BASE_DIR, html=True),
-    name="frontend"
+    "/static",
+    StaticFiles(directory=BASE_DIR),
+    name="static"
 )
 
 
-# Rooms
+# ================= HTML =================
+
+@app.get("/")
+def home():
+    return FileResponse(os.path.join(BASE_DIR, "INDEX.html"))
+
+
+@app.get("/group.html")
+def group():
+    return FileResponse(os.path.join(BASE_DIR, "group.html"))
+
+
+# ================= DATA =================
+
 rooms = {}
-clients = []
+connections = {}
 
 
-# WebSocket
+def gen_room():
+    return "".join(
+        random.choices(string.ascii_uppercase + string.digits, k=6)
+    )
+
+
+async def broadcast(room):
+
+    if room not in rooms:
+        return
+
+    data = {
+        "type": "update",
+        "members": rooms[room]
+    }
+
+    for ws, info in connections.items():
+        if info[0] == room:
+            await ws.send_json(data)
+
+
+# ================= WEBSOCKET =================
+
 @app.websocket("/ws")
 async def websocket(ws: WebSocket):
 
     await ws.accept()
-    clients.append(ws)
-
-    print("Client connected")
-
+    print("Connected ✅")
 
     try:
 
         while True:
 
-            data = await ws.receive_text()
-            msg = json.loads(data)
-
-            action = msg.get("action")
-            user = msg.get("username")
-            room = msg.get("room")
+            data = await ws.receive_json()
+            action = data.get("action")
 
 
             # CREATE
             if action == "create":
 
-                room = "".join(
-                    random.choices(
-                        string.ascii_uppercase + string.digits,
-                        k=6
-                    )
-                )
+                user = data["username"]
 
-                rooms[room] = {}
+                room = gen_room()
 
-                rooms[room][user] = {
-                    "time": 0,
-                    "status": "online"
+                rooms[room] = {
+                    user: {"time": 0, "status": "offline"}
                 }
+
+                connections[ws] = (room, user)
 
                 await ws.send_json({
                     "type": "created",
@@ -79,48 +101,67 @@ async def websocket(ws: WebSocket):
             # JOIN
             elif action == "join":
 
+                user = data["username"]
+                room = data["room"]
+
                 if room not in rooms:
 
                     await ws.send_json({
                         "type": "error",
                         "msg": "Room not found"
                     })
+
                     continue
 
 
                 rooms[room][user] = {
                     "time": 0,
-                    "status": "online"
+                    "status": "offline"
                 }
 
+                connections[ws] = (room, user)
 
-                for c in clients:
-                    await c.send_json({
-                        "type": "joined",
-                        "room": room,
-                        "members": rooms[room]
-                    })
+                await ws.send_json({
+                    "type": "joined",
+                    "room": room,
+                    "members": rooms[room]
+                })
+
+                await broadcast(room)
 
 
             # UPDATE
             elif action == "update":
 
-                if room not in rooms:
-                    continue
+                user = data["username"]
+                room = data["room"]
 
+                if room in rooms:
 
-                rooms[room][user]["time"] = msg["time"]
-                rooms[room][user]["status"] = msg["status"]
+                    rooms[room][user] = {
+                        "time": data["time"],
+                        "status": data["status"]
+                    }
 
-
-                for c in clients:
-                    await c.send_json({
-                        "type": "update",
-                        "members": rooms[room]
-                    })
+                    await broadcast(room)
 
 
     except WebSocketDisconnect:
 
-        clients.remove(ws)
-        print("Client disconnected")
+        print("Disconnected ❌")
+
+        if ws in connections:
+
+            room, user = connections[ws]
+
+            if room in rooms and user in rooms[room]:
+
+                del rooms[room][user]
+
+                if not rooms[room]:
+                    del rooms[room]
+
+                else:
+                    await broadcast(room)
+
+            del connections[ws]

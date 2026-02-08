@@ -1,40 +1,49 @@
-// group.js
-// --------------------------------
-// WebSocket Client (FastAPI)
-// --------------------------------
-
-let protocol =
-    location.protocol === "https:" ? "wss://" : "ws://";
-
-const socket = new WebSocket(
-    protocol + location.host + "/ws"
-);
+// ===============================
+// SIMPLE GROUP STUDY JS
+// ===============================
 
 
-// Username
+// Create WebSocket URL
+let socketURL;
+
+if (location.protocol === "https:") {
+    socketURL = "wss://" + location.host + "/ws";
+} else {
+    socketURL = "ws://" + location.host + "/ws";
+}
+
+
+// Connect
+let socket = new WebSocket(socketURL);
+
+
+// Globals
+let socketReady = false;
+
 let username = "";
-
-
-// Variables
 let currentRoom = "";
+
 let seconds = 0;
 let timer = null;
 
 
 // Connected
-socket.onopen = () => {
+socket.onopen = function () {
 
-    console.log("Connected to backend ✅");
+    console.log("✅ Connected");
+
+    socketReady = true;
 };
 
 
-// Messages
-socket.onmessage = (event) => {
+// Message
+socket.onmessage = function (event) {
 
     let data = JSON.parse(event.data);
 
+    console.log("📩", data);
 
-    // Created
+
     if (data.type === "created") {
 
         currentRoom = data.room;
@@ -46,7 +55,6 @@ socket.onmessage = (event) => {
     }
 
 
-    // Joined
     if (data.type === "joined") {
 
         currentRoom = data.room;
@@ -58,14 +66,12 @@ socket.onmessage = (event) => {
     }
 
 
-    // Update
     if (data.type === "update") {
 
         renderMembers(data.members);
     }
 
 
-    // Error
     if (data.type === "error") {
 
         alert(data.msg);
@@ -73,15 +79,34 @@ socket.onmessage = (event) => {
 };
 
 
-// Create Room
+// Error
+socket.onerror = function (e) {
+
+    console.log("❌ Socket error", e);
+};
+
+
+// ===============================
+// BUTTON FUNCTIONS
+// ===============================
+
+
 function createRoom() {
+
+    if (!socketReady) {
+
+        alert("Server not connected");
+        return;
+    }
+
 
     username =
         document.getElementById("nameInput").value.trim();
 
-    if (!username) {
 
-        alert("Enter your name");
+    if (username === "") {
+
+        alert("Enter name");
         return;
     }
 
@@ -95,8 +120,14 @@ function createRoom() {
 }
 
 
-// Join Room
 function joinRoom() {
+
+    if (!socketReady) {
+
+        alert("Server not connected");
+        return;
+    }
+
 
     username =
         document.getElementById("nameInput").value.trim();
@@ -105,9 +136,9 @@ function joinRoom() {
         document.getElementById("roomInput").value.trim();
 
 
-    if (!username || !room) {
+    if (username === "" || room === "") {
 
-        alert("Enter name and room ID");
+        alert("Fill all fields");
         return;
     }
 
@@ -122,7 +153,6 @@ function joinRoom() {
 }
 
 
-// Start Study
 function startStudy() {
 
     if (!currentRoom) {
@@ -131,9 +161,11 @@ function startStudy() {
         return;
     }
 
+
     clearInterval(timer);
 
-    timer = setInterval(() => {
+
+    timer = setInterval(function () {
 
         seconds++;
 
@@ -145,7 +177,6 @@ function startStudy() {
 }
 
 
-// Stop Study
 function stopStudy() {
 
     clearInterval(timer);
@@ -154,8 +185,10 @@ function stopStudy() {
 }
 
 
-// Send Update
 function sendUpdate(status) {
+
+    if (!socketReady) return;
+
 
     socket.send(JSON.stringify({
 
@@ -169,18 +202,22 @@ function sendUpdate(status) {
 }
 
 
+// ===============================
 // UI
+// ===============================
+
+
 function updateUI() {
 
     let min = Math.floor(seconds / 60);
     let sec = seconds % 60;
+
 
     document.getElementById("timer").innerText =
         min + ":" + (sec < 10 ? "0" + sec : sec);
 }
 
 
-// Members
 function renderMembers(members) {
 
     let box =
