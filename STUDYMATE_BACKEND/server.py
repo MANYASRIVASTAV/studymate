@@ -1,81 +1,112 @@
 # server.py
-# --------------------------------
-# FastAPI Group Study Backend
-# --------------------------------
-
-import os
+# ----------------------------
+# FINAL FULL SERVER
+# ----------------------------
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+import os
+import json
+import random
+import string
 
 
 app = FastAPI()
 
 
-# Allow frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ----------------------------
+# Serve Frontend Folder
+# ----------------------------
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Serve static files (css/js)
+app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
 
 
-# Project root
-BASE_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")
-)
+# ----------------------------
+# Helper: Generate Room ID
+# ----------------------------
+
+def generate_room():
+    return "".join(
+        random.choices(string.ascii_uppercase + string.digits, k=6)
+    )
 
 
-# Store rooms
+# ----------------------------
+# Store Rooms in Memory
+# ----------------------------
+
 rooms = {}
-user_data = {}
+
+connections = []
 
 
-# ================= WEBSOCKET =================
+# ----------------------------
+# Home
+# ----------------------------
+
+@app.get("/")
+def home():
+    return {"status": "StudyMate Running"}
+
+
+# ----------------------------
+# Serve Group Page
+# ----------------------------
+
+@app.get("/group")
+def group_page():
+    return FileResponse(os.path.join(BASE_DIR, "group.html"))
+
+
+# ----------------------------
+# WebSocket
+# ----------------------------
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
 
     await ws.accept()
-
     print("Client connected ✅")
 
-    try:
+    connections.append(ws)
 
+    try:
         while True:
 
-            data = await ws.receive_json()
+            data = await ws.receive_text()
+            msg = json.loads(data)
 
-            action = data["action"]
+
+            action = msg.get("action")
+            user = msg.get("username")
+            room = msg.get("room")
 
 
-            # CREATE
+            # ---------------- CREATE ROOM ----------------
             if action == "create":
 
-                name = data["username"]
+                room = generate_room()
 
-                room = "R" + str(len(rooms) + 100)
+                rooms[room] = {}
 
-                rooms[room] = {name: ws}
-
-                user_data[room] = {
-                    name: {"time": 0, "status": "online"}
+                rooms[room][user] = {
+                    "time": 0,
+                    "status": "online"
                 }
 
                 await ws.send_json({
                     "type": "created",
                     "room": room,
-                    "members": user_data[room]
+                    "members": rooms[room]
                 })
 
 
-            # JOIN
+            # ---------------- JOIN ROOM ----------------
             elif action == "join":
-
-                name = data["username"]
-                room = data["room"]
 
                 if room not in rooms:
 
@@ -83,43 +114,44 @@ async def websocket_endpoint(ws: WebSocket):
                         "type": "error",
                         "msg": "Room not found"
                     })
+
                     continue
 
 
-                rooms[room][name] = ws
-
-                user_data[room][name] = {
+                rooms[room][user] = {
                     "time": 0,
                     "status": "online"
                 }
 
 
-                # Notify all
-                for user in rooms[room].values():
-
-                    await user.send_json({
+                # Broadcast update
+                for conn in connections:
+                    await conn.send_json({
                         "type": "joined",
                         "room": room,
-                        "members": user_data[room]
+                        "members": rooms[room]
                     })
 
 
-            # UPDATE
+            # ---------------- UPDATE ----------------
             elif action == "update":
 
-                room = data["room"]
-                name = data["username"]
+                if room not in rooms:
+                    continue
 
-                user_data[room][name]["time"] = data["time"]
+                if user not in rooms[room]:
+                    continue
 
-                user_data[room][name]["status"] = data["status"]
+
+                rooms[room][user]["time"] = msg["time"]
+                rooms[room]["status"] = msg["status"]
 
 
-                for user in rooms[room].values():
-
-                    await user.send_json({
+                # Broadcast update
+                for conn in connections:
+                    await conn.send_json({
                         "type": "update",
-                        "members": user_data[room]
+                        "members": rooms[room]
                     })
 
 
@@ -127,35 +159,4 @@ async def websocket_endpoint(ws: WebSocket):
 
         print("Client disconnected ❌")
 
-
-# ================= FRONTEND =================
-
-
-@app.get("/group")
-def serve_group():
-
-    return FileResponse(
-        os.path.join(BASE_DIR, "group.html")
-    )
-
-
-@app.get("/group.js")
-def serve_js():
-
-    return FileResponse(
-        os.path.join(BASE_DIR, "group.js")
-    )
-
-
-@app.get("/group.css")
-def serve_css():
-
-    return FileResponse(
-        os.path.join(BASE_DIR, "group.css")
-    )
-
-
-@app.get("/")
-def home():
-
-    return "StudyMate Backend Running"
+        connections.remove(ws)
