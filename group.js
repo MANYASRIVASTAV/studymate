@@ -1,110 +1,85 @@
-// ================================
-// StudyMate Group Study - FINAL
-// ================================
+// group.js
+// --------------------------------
+// WebSocket Client (FastAPI)
+// --------------------------------
+
+let protocol =
+    location.protocol === "https:" ? "wss://" : "ws://";
+
+const socket = new WebSocket(
+    protocol + location.host + "/ws"
+);
 
 
-// GLOBAL VARIABLES
-let socket;
-let socketReady = false;
-
+// Username
 let username = "";
-let currentRoom = "";
 
+
+// Variables
+let currentRoom = "";
 let seconds = 0;
 let timer = null;
 
 
-// CONNECT TO SERVER
-function connectSocket() {
+// Connected
+socket.onopen = () => {
 
-    var protocol =
-        location.protocol === "https:" ? "wss://" : "ws://";
-
-    socket = new WebSocket(
-        protocol + location.host + "/ws"
-    );
+    console.log("Connected to backend ✅");
+};
 
 
-    socket.onopen = function () {
-        console.log("Connected");
-        socketReady = true;
-    };
+// Messages
+socket.onmessage = (event) => {
+
+    let data = JSON.parse(event.data);
 
 
-    socket.onerror = function (e) {
-        console.log("Socket error", e);
-    };
+    // Created
+    if (data.type === "created") {
 
+        currentRoom = data.room;
 
-    socket.onclose = function () {
+        document.getElementById("roomInfo").innerText =
+            "Connected: " + currentRoom;
 
-        console.log("Disconnected, reconnecting...");
-
-        socketReady = false;
-
-        setTimeout(connectSocket, 2000);
-    };
-
-
-    socket.onmessage = function (event) {
-
-        var data = JSON.parse(event.data);
-
-
-        if (data.type === "created") {
-
-            currentRoom = data.room;
-
-            document.getElementById("roomInfo").innerText =
-                "Connected: " + currentRoom;
-
-            renderMembers(data.members);
-        }
-
-
-        if (data.type === "joined") {
-
-            currentRoom = data.room;
-
-            document.getElementById("roomInfo").innerText =
-                "Connected: " + currentRoom;
-
-            renderMembers(data.members);
-        }
-
-
-        if (data.type === "update") {
-
-            renderMembers(data.members);
-        }
-
-
-        if (data.type === "error") {
-
-            alert(data.msg);
-        }
-    };
-}
-
-
-// START SOCKET
-connectSocket();
-
-
-// CREATE ROOM
-function createRoom() {
-
-    if (!socketReady) {
-        alert("Connecting... please wait");
-        return;
+        renderMembers(data.members);
     }
 
+
+    // Joined
+    if (data.type === "joined") {
+
+        currentRoom = data.room;
+
+        document.getElementById("roomInfo").innerText =
+            "Connected: " + currentRoom;
+
+        renderMembers(data.members);
+    }
+
+
+    // Update
+    if (data.type === "update") {
+
+        renderMembers(data.members);
+    }
+
+
+    // Error
+    if (data.type === "error") {
+
+        alert(data.msg);
+    }
+};
+
+
+// Create Room
+function createRoom() {
 
     username =
         document.getElementById("nameInput").value.trim();
 
-
-    if (username === "") {
+    if (!username) {
 
         alert("Enter your name");
         return;
@@ -120,23 +95,17 @@ function createRoom() {
 }
 
 
-// JOIN ROOM
+// Join Room
 function joinRoom() {
-
-    if (!socketReady) {
-        alert("Connecting... please wait");
-        return;
-    }
-
 
     username =
         document.getElementById("nameInput").value.trim();
 
-    var room =
+    let room =
         document.getElementById("roomInput").value.trim();
 
 
-    if (username === "" || room === "") {
+    if (!username || !room) {
 
         alert("Enter name and room ID");
         return;
@@ -153,20 +122,18 @@ function joinRoom() {
 }
 
 
-// START STUDY
+// Start Study
 function startStudy() {
 
-    if (currentRoom === "") {
+    if (!currentRoom) {
 
         alert("Join room first");
         return;
     }
 
-
     clearInterval(timer);
 
-
-    timer = setInterval(function () {
+    timer = setInterval(() => {
 
         seconds++;
 
@@ -178,7 +145,7 @@ function startStudy() {
 }
 
 
-// STOP STUDY
+// Stop Study
 function stopStudy() {
 
     clearInterval(timer);
@@ -187,11 +154,8 @@ function stopStudy() {
 }
 
 
-// SEND UPDATE
+// Send Update
 function sendUpdate(status) {
-
-    if (!socketReady) return;
-
 
     socket.send(JSON.stringify({
 
@@ -205,50 +169,52 @@ function sendUpdate(status) {
 }
 
 
-// UPDATE TIMER UI
+// UI
 function updateUI() {
 
-    var min = Math.floor(seconds / 60);
-    var sec = seconds % 60;
-
+    let min = Math.floor(seconds / 60);
+    let sec = seconds % 60;
 
     document.getElementById("timer").innerText =
         min + ":" + (sec < 10 ? "0" + sec : sec);
 }
 
 
-// SHOW MEMBERS
+// Members
 function renderMembers(members) {
 
-    var box =
+    let box =
         document.getElementById("members");
 
     box.innerHTML = "";
 
 
-    for (var user in members) {
+    for (let user in members) {
 
-        var info = members[user];
+        let info = members[user];
 
-
-        var icon =
+        let icon =
             info.status === "studying"
-                ? "ONLINE"
-                : "OFFLINE";
+                ? "🟢"
+                : "🔴";
 
 
-        var min = Math.floor(info.time / 60);
-        var sec = info.time % 60;
+        let min = Math.floor(info.time / 60);
+        let sec = info.time % 60;
 
 
-        box.innerHTML +=
+        box.innerHTML += `
 
-            "<div class='member'>" +
-            "<span>" + user + "</span>" +
-            "<span>" + icon + "</span>" +
-            "<span>" + min + ":" +
-            (sec < 10 ? "0" + sec : sec) +
-            "</span>" +
-            "</div>";
+            <div class="member">
+
+                <span>${user}</span>
+
+                <span>${icon}</span>
+
+                <span>${min}:${sec < 10 ? "0"+sec : sec}</span>
+
+            </div>
+
+        `;
     }
 }

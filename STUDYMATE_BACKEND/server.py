@@ -1,6 +1,6 @@
 # server.py
 # --------------------------------
-# FastAPI + WebSocket Group Study
+# FastAPI Group Study Backend
 # --------------------------------
 
 import os
@@ -10,11 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 
-# Create app
 app = FastAPI()
 
 
-# Allow frontend access
+# Allow frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,20 +22,15 @@ app.add_middleware(
 )
 
 
-# Project root (studymate folder)
-
-# Project root (same folder as server.py)
+# Project root
 BASE_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")
 )
 
 
-
-
-
 # Store rooms
-rooms = {}        # {room: {username: websocket}}
-user_data = {}    # {room: {username: {time, status}}}
+rooms = {}
+user_data = {}
 
 
 # ================= WEBSOCKET =================
@@ -45,6 +39,7 @@ user_data = {}    # {room: {username: {time, status}}}
 async def websocket_endpoint(ws: WebSocket):
 
     await ws.accept()
+
     print("Client connected ✅")
 
     try:
@@ -56,7 +51,7 @@ async def websocket_endpoint(ws: WebSocket):
             action = data["action"]
 
 
-            # -------- CREATE ROOM --------
+            # CREATE
             if action == "create":
 
                 name = data["username"]
@@ -76,7 +71,7 @@ async def websocket_endpoint(ws: WebSocket):
                 })
 
 
-            # -------- JOIN ROOM --------
+            # JOIN
             elif action == "join":
 
                 name = data["username"]
@@ -99,7 +94,7 @@ async def websocket_endpoint(ws: WebSocket):
                 }
 
 
-                # Send update to all users
+                # Notify all
                 for user in rooms[room].values():
 
                     await user.send_json({
@@ -109,13 +104,14 @@ async def websocket_endpoint(ws: WebSocket):
                     })
 
 
-            # -------- UPDATE --------
+            # UPDATE
             elif action == "update":
 
                 room = data["room"]
                 name = data["username"]
 
                 user_data[room][name]["time"] = data["time"]
+
                 user_data[room][name]["status"] = data["status"]
 
 
@@ -131,50 +127,35 @@ async def websocket_endpoint(ws: WebSocket):
 
         print("Client disconnected ❌")
 
+
 # ================= FRONTEND =================
 
 
-from fastapi.responses import FileResponse
+@app.get("/group")
+def serve_group():
+
+    return FileResponse(
+        os.path.join(BASE_DIR, "group.html")
+    )
 
 
-# Home
+@app.get("/group.js")
+def serve_js():
+
+    return FileResponse(
+        os.path.join(BASE_DIR, "group.js")
+    )
+
+
+@app.get("/group.css")
+def serve_css():
+
+    return FileResponse(
+        os.path.join(BASE_DIR, "group.css")
+    )
+
+
 @app.get("/")
 def home():
+
     return "StudyMate Backend Running"
-
-
-# Serve ANY html file
-@app.get("/{page_name}")
-def serve_pages(page_name: str):
-
-    # If user opens: /dashboard → dashboard.html
-    file_path = os.path.join(BASE_DIR, f"{page_name}.html")
-
-    if os.path.exists(file_path):
-        return FileResponse(file_path)
-
-    return {"error": "Page not found"}
-
-
-# Serve JS files
-@app.get("/{file_name}.js")
-def serve_js(file_name: str):
-
-    path = os.path.join(BASE_DIR, f"{file_name}.js")
-
-    if os.path.exists(path):
-        return FileResponse(path)
-
-    return {"error": "JS file not found"}
-
-
-# Serve CSS files
-@app.get("/{file_name}.css")
-def serve_css(file_name: str):
-
-    path = os.path.join(BASE_DIR, f"{file_name}.css")
-
-    if os.path.exists(path):
-        return FileResponse(path)
-
-    return {"error": "CSS file not found"}
