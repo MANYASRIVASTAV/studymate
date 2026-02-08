@@ -1,81 +1,83 @@
 # server.py
-# --------------------------------
-# FastAPI Group Study Backend
-# --------------------------------
-
-import os
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+import os
+import json
+import random
+import string
 
 
 app = FastAPI()
 
 
-# Allow frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+# Project root (studymate folder)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+# Serve everything (html, css, js) from root
+app.mount(
+    "/",
+    StaticFiles(directory=BASE_DIR, html=True),
+    name="frontend"
 )
 
 
-# Project root
-BASE_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")
-)
-
-
-# Store rooms
+# Rooms
 rooms = {}
-user_data = {}
+clients = []
 
 
-# ================= WEBSOCKET =================
-
+# WebSocket
 @app.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket):
+async def websocket(ws: WebSocket):
 
     await ws.accept()
+    clients.append(ws)
 
-    print("Client connected ✅")
+    print("Client connected")
+
 
     try:
 
         while True:
 
-            data = await ws.receive_json()
+            data = await ws.receive_text()
+            msg = json.loads(data)
 
-            action = data["action"]
+            action = msg.get("action")
+            user = msg.get("username")
+            room = msg.get("room")
 
 
             # CREATE
             if action == "create":
 
-                name = data["username"]
+                room = "".join(
+                    random.choices(
+                        string.ascii_uppercase + string.digits,
+                        k=6
+                    )
+                )
 
-                room = "R" + str(len(rooms) + 100)
+                rooms[room] = {}
 
-                rooms[room] = {name: ws}
-
-                user_data[room] = {
-                    name: {"time": 0, "status": "online"}
+                rooms[room][user] = {
+                    "time": 0,
+                    "status": "online"
                 }
 
                 await ws.send_json({
                     "type": "created",
                     "room": room,
-                    "members": user_data[room]
+                    "members": rooms[room]
                 })
 
 
             # JOIN
             elif action == "join":
-
-                name = data["username"]
-                room = data["room"]
 
                 if room not in rooms:
 
@@ -86,76 +88,39 @@ async def websocket_endpoint(ws: WebSocket):
                     continue
 
 
-                rooms[room][name] = ws
-
-                user_data[room][name] = {
+                rooms[room][user] = {
                     "time": 0,
                     "status": "online"
                 }
 
 
-                # Notify all
-                for user in rooms[room].values():
-
-                    await user.send_json({
+                for c in clients:
+                    await c.send_json({
                         "type": "joined",
                         "room": room,
-                        "members": user_data[room]
+                        "members": rooms[room]
                     })
 
 
             # UPDATE
             elif action == "update":
 
-                room = data["room"]
-                name = data["username"]
-
-                user_data[room][name]["time"] = data["time"]
-
-                user_data[room][name]["status"] = data["status"]
+                if room not in rooms:
+                    continue
 
 
-                for user in rooms[room].values():
+                rooms[room][user]["time"] = msg["time"]
+                rooms[room][user]["status"] = msg["status"]
 
-                    await user.send_json({
+
+                for c in clients:
+                    await c.send_json({
                         "type": "update",
-                        "members": user_data[room]
+                        "members": rooms[room]
                     })
 
 
     except WebSocketDisconnect:
 
-        print("Client disconnected ❌")
-
-
-# ================= FRONTEND =================
-
-
-@app.get("/group")
-def serve_group():
-
-    return FileResponse(
-        os.path.join(BASE_DIR, "group.html")
-    )
-
-
-@app.get("/group.js")
-def serve_js():
-
-    return FileResponse(
-        os.path.join(BASE_DIR, "group.js")
-    )
-
-
-@app.get("/group.css")
-def serve_css():
-
-    return FileResponse(
-        os.path.join(BASE_DIR, "group.css")
-    )
-
-
-@app.get("/")
-def home():
-
-    return "StudyMate Backend Running"
+        clients.remove(ws)
+        print("Client disconnected")
