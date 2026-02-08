@@ -252,4 +252,3 @@ function renderMembers(members) {
             "</div>";
     }
 }
-

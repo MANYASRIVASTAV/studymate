@@ -1,69 +1,41 @@
 # server.py
-# ----------------------------
-# FINAL FULL SERVER (ALL PAGES)
-# ----------------------------
+# --------------------------------
+# FastAPI + WebSocket Group Study
+# --------------------------------
+
+import os
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-import os
-import json
-import random
-import string
 
 
+# Create app
 app = FastAPI()
 
 
-# ----------------------------
-# Paths
-# ----------------------------
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-# ----------------------------
-# Serve All Static Files
-# ----------------------------
-
-app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
+# Allow frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-# ----------------------------
-# Store Rooms
-# ----------------------------
+# Project root (studymate folder)
 
-rooms = {}
-connections = []
+# Project root (same folder as server.py)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-# ----------------------------
-# Home
-# ----------------------------
 
-@app.get("/")
-def home():
-    return FileResponse(os.path.join(BASE_DIR, "INDEX.html"))
+# Store rooms
+rooms = {}        # {room: {username: websocket}}
+user_data = {}    # {room: {username: {time, status}}}
 
 
-# ----------------------------
-# Serve Any HTML Page
-# ----------------------------
-
-@app.get("/{page}")
-def serve_pages(page: str):
-
-    file_path = os.path.join(BASE_DIR, page)
-
-    if os.path.exists(file_path):
-        return FileResponse(file_path)
-
-    return {"error": "Page not found"}
-
-
-# ----------------------------
-# WebSocket
-# ----------------------------
+# ================= WEBSOCKET =================
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
@@ -71,46 +43,40 @@ async def websocket_endpoint(ws: WebSocket):
     await ws.accept()
     print("Client connected ✅")
 
-    connections.append(ws)
-
     try:
+
         while True:
 
-            data = await ws.receive_text()
-            msg = json.loads(data)
+            data = await ws.receive_json()
+
+            action = data["action"]
 
 
-            action = msg.get("action")
-            user = msg.get("username")
-            room = msg.get("room")
-
-
-            # CREATE ROOM
+            # -------- CREATE ROOM --------
             if action == "create":
 
-                room = "".join(
-                    random.choices(
-                        string.ascii_uppercase + string.digits,
-                        k=6
-                    )
-                )
+                name = data["username"]
 
-                rooms[room] = {}
+                room = "R" + str(len(rooms) + 100)
 
-                rooms[room][user] = {
-                    "time": 0,
-                    "status": "online"
+                rooms[room] = {name: ws}
+
+                user_data[room] = {
+                    name: {"time": 0, "status": "online"}
                 }
 
                 await ws.send_json({
                     "type": "created",
                     "room": room,
-                    "members": rooms[room]
+                    "members": user_data[room]
                 })
 
 
-            # JOIN ROOM
+            # -------- JOIN ROOM --------
             elif action == "join":
+
+                name = data["username"]
+                room = data["room"]
 
                 if room not in rooms:
 
@@ -118,42 +84,42 @@ async def websocket_endpoint(ws: WebSocket):
                         "type": "error",
                         "msg": "Room not found"
                     })
-
                     continue
 
 
-                rooms[room][user] = {
+                rooms[room][name] = ws
+
+                user_data[room][name] = {
                     "time": 0,
                     "status": "online"
                 }
 
 
-                for conn in connections:
-                    await conn.send_json({
+                # Send update to all users
+                for user in rooms[room].values():
+
+                    await user.send_json({
                         "type": "joined",
                         "room": room,
-                        "members": rooms[room]
+                        "members": user_data[room]
                     })
 
 
-            # UPDATE
+            # -------- UPDATE --------
             elif action == "update":
 
-                if room not in rooms:
-                    continue
+                room = data["room"]
+                name = data["username"]
 
-                if user not in rooms[room]:
-                    continue
-
-
-                rooms[room][user]["time"] = msg["time"]
-                rooms[room][user]["status"] = msg["status"]
+                user_data[room][name]["time"] = data["time"]
+                user_data[room][name]["status"] = data["status"]
 
 
-                for conn in connections:
-                    await conn.send_json({
+                for user in rooms[room].values():
+
+                    await user.send_json({
                         "type": "update",
-                        "members": rooms[room]
+                        "members": user_data[room]
                     })
 
 
@@ -161,4 +127,26 @@ async def websocket_endpoint(ws: WebSocket):
 
         print("Client disconnected ❌")
 
-        connections.remove(ws)
+
+# ================= FRONTEND =================
+
+
+@app.get("/")
+def home():
+    return "StudyMate Backend Running"
+
+
+@app.get("/group")
+def serve_group():
+
+    return FileResponse(
+        os.path.join(BASE_DIR, "group.html")
+    )
+
+
+@app.get("/group.js")
+def serve_js():
+
+    return FileResponse(
+        os.path.join(BASE_DIR, "group.js")
+    )
