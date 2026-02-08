@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>My Notes</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+    <h2>My Notes</h2>
+</header>
+
+
+<div class="nav">
+
+    <a href="dashboard.html">Dashboard</a>
+    <a href="planner.html">Planner</a>
+    <a href="notes.html">Notes</a>
+    <a href="exams.html">Exams</a>
+    <a href="profile.html">Profile</a>
+
+</div>
+
+
+<div class="container">
+
+    <!-- ADD NOTE -->
+    <div class="box">
+
+        <h3>Add New Note</h3>
+
+        <input id="noteSubject"
+               placeholder="Subject (Biology, Physics...)">
+
+        <textarea id="noteContent"
+                  rows="5"
+                  placeholder="Write your note..."></textarea>
+
+        <button onclick="addNote()">Save Note</button>
+
+    </div>
+
+
+    <!-- NOTES LIST -->
+    <div class="box">
+
+        <h3>Saved Notes</h3>
+
+        <div id="notesList"></div>
+
+    </div>
+
+</div>
+
+
+<script src="main.js"></script>
+
+</body>
+
+</html>

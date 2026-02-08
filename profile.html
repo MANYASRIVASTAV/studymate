@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>My Profile</title>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body class="page-profile">
+
+
+<!-- ================= HEADER ================= -->
+
+<header>
+
+    <h2>My Profile</h2>
+
+</header>
+
+
+<!-- ================= NAV ================= -->
+
+<div class="nav">
+
+    <a href="dashboard.html">Dashboard</a>
+
+    <a href="planner.html">Planner</a>
+
+    <a href="notes.html">Notes</a>
+
+    <a href="exams.html">Exams</a>
+
+    <a href="profile.html" class="active">Profile</a>
+
+</div>
+
+
+<!-- ================= MAIN ================= -->
+
+<div class="container">
+
+
+    <!-- ================= EDIT PROFILE ================= -->
+
+    <div class="box profile-card fade-in">
+
+
+        <!-- Profile Picture -->
+
+        <div class="profile-pic-box">
+
+            <div class="profile-pic" id="profilePic">
+
+                <img id="profileImage" alt="Profile">
+
+                <span id="cameraIcon">📷</span>
+
+            </div>
+
+        </div>
+
+
+        <h3>Edit Profile</h3>
+
+
+        <!-- FORM -->
+
+        <div class="form-group">
+
+            <label>NAME</label>
+
+            <input id="profileName"
+                   placeholder="Your Name">
+
+        </div>
+
+
+        <div class="form-group">
+
+            <label>GOAL</label>
+
+            <input id="profileGoal"
+                   placeholder="NEET 2026">
+
+        </div>
+
+
+        <div class="form-group">
+
+            <label>DAILY TARGET (HOURS)</label>
+
+            <input id="profileTarget"
+                   type="number"
+                   placeholder="5">
+
+        </div>
+
+
+        <div class="form-group">
+
+            <label>MOTIVATION</label>
+
+            <textarea id="profileQuote"
+                      rows="2"
+                      placeholder="Stay focused 💙"></textarea>
+
+        </div>
+
+
+        <!-- SAVE BUTTON -->
+
+        <div class="profile-btn-wrap">
+
+            <button id="saveProfileBtn"
+                    onclick="saveProfile()">
+
+                Save Profile
+
+            </button>
+
+        </div>
+
+
+    </div>
+
+
+    <!-- ================= MY DETAILS ================= -->
+
+    <div class="box fade-in">
+
+
+        <h3>My Details</h3>
+
+
+        <div class="profile-summary">
+
+
+            <div>
+
+                <b>Name</b>
+
+                <span id="viewName">-</span>
+
+            </div>
+
+
+            <div>
+
+                <b>Goal</b>
+
+                <span id="viewGoal">-</span>
+
+            </div>
+
+
+            <div>
+
+                <b>Daily Target</b>
+
+                <span id="viewTarget">-</span> Hours
+
+            </div>
+
+
+            <div>
+
+                <b>Motivation</b>
+
+                <span id="viewQuote">-</span>
+
+            </div>
+
+
+        </div>
+
+
+    </div>
+
+
+</div>
+
+
+<!-- ================= HIDDEN IMAGE INPUT ================= -->
+
+<input type="file"
+       id="imageInput"
+       accept="image/*"
+       hidden>
+
+
+<!-- ================= JS ================= -->
+
+<script src="main.js"></script>
+
+</body>
+
+</html>

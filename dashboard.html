@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Dashboard</title>
+
+    <!-- Connect CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <script>
+if (localStorage.getItem("loggedIn") !== "yes") {
+
+    window.location = "login.html";
+}
+</script>
+
+
+<!-- HEADER -->
+<header>
+
+    <h2>Welcome, SHALINI😎</h2>
+
+    <a href="login.html" style="color:white;">Logout</a>
+
+</header>
+
+
+<!-- NAVIGATION -->
+<div class="nav">
+
+    <a href="dashboard.html" class="active">Dashboard</a>
+
+    <a href="planner.html">Planner</a>
+    <a href="notes.html">Notes</a>
+    <a href="exams.html">Exams</a>
+    <a href="profile.html">Profile</a>
+    <a href="group.html">Nexus</a>
+   
+
+
+</div>
+
+
+<div class="container">
+
+   <div class="box fade-in">
+
+    <h3 id="countdown">Loading...</h3>
+
+    <!-- Progress bar -->
+    <div class="year-bar">
+        <div id="yearProgress"></div>
+    </div>
+
+</div>
+
+
+    <!-- QUOTE -->
+    <div class="highlight" id="quoteBox">
+        Loading quote...
+    </div>
+
+
+<!-- TIMER -->
+<div class="box fade-in">
+
+    <h3>Pomodoro Timer</h3>
+
+    <!-- Settings -->
+    <div class="timer-settings">
+
+        <input id="studyInput"
+               type="number"
+               placeholder="Study (min)"
+               value="25">
+
+        <input id="breakInput"
+               type="number"
+               placeholder="Break (min)"
+               value="5">
+
+    </div>
+
+
+    <!-- Timer Display -->
+    <p id="timer">25:00</p>
+
+    <p id="modeText">Study Mode 📘</p>
+
+
+    <!-- Controls -->
+    <div class="timer-buttons">
+
+        <button onclick="startTimer()">Start</button>
+
+        <button onclick="stopTimer()">Stop</button>
+
+        <button onclick="openFocusMode()">Focus 🔥</button>
+
+    </div>
+
+</div>
+
+
+<!-- ================= FULLSCREEN OVERLAY ================= -->
+
+<div id="focusOverlay">
+
+    <div class="focus-center">
+
+        <h1 id="focusTimer">25:00</h1>
+
+        
+
+    </div>
+
+
+    <div class="focus-controls">
+
+        <button onclick="pauseFocus()">Pause</button>
+
+        <button onclick="closeFocusMode()">Exit</button>
+
+    </div>
+
+</div>
+
+
+
+
+<!-- ================= FOCUS MODE OVERLAY ================= -->
+
+<div id="focusOverlay">
+
+    <!-- Progress Ring -->
+    <div class="focus-ring">
+
+        <!-- Timer -->
+        <div id="focusTimer">25:00</div>
+
+    </div>
+
+    
+
+
+    <!-- Controls -->
+    <div class="focus-controls">
+
+        <button onclick="pauseFocus()">Pause</button>
+
+        <button onclick="closeFocusMode()">Exit Focus</button>
+
+    </div>
+
+</div>
+
+
+    <!-- TASKS -->
+<div class="box fade-in task-card">
+
+    <h3>Today's Tasks</h3>
+
+    <!-- Input Row -->
+    <div class="task-input-row">
+
+        <input id="taskInput"
+               placeholder="Add new task...">
+
+        <button class="add-task-btn"
+                onclick="addTask()">
+            Add
+        </button>
+
+    </div>
+
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state">
+        You're all caught up! ✨
+        <br>
+        🌸
+    </div>
+
+
+    <!-- Task List -->
+    <ul id="taskList"></ul>
+
+</div>
+
+
+
+    <!-- PROGRESS -->
+    <div class="box fade in">
+
+        <h3>Progress</h3>
+
+        <p id="studyTime">Today: 0 min</p>
+
+        <p id="streak">Streak: 🔥 0 Days</p>
+
+    </div>
+
+</div>
+
+
+<!-- Connect JS -->
+<script src="main.js"></script>
+
+</body>
+
+</html>

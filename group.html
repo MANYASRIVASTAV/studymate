@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <title>StudyMate | Group Study</title>
+
+    <link rel="stylesheet" href="group.css">
+
+</head>
+
+<body>
+
+<div class="nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="planner.html">Planner</a>
+    <a href="notes.html">Notes</a>
+    <a href="group.html" class="active">Group</a>
+    <a href="profile.html">Profile</a>
+</div>
+
+<div class="app">
+
+    <h1>👥 Group Study Room</h1>
+
+    <div class="room-box">
+
+        <!-- Username -->
+        <input type="text"
+               id="nameInput"
+               placeholder="Enter Your Name">
+
+        <!-- Room -->
+        <input type="text"
+               id="roomInput"
+               placeholder="Enter Room ID">
+
+        <button onclick="createRoom()">Create Room</button>
+        <button onclick="joinRoom()">Join Room</button>
+
+        <p id="roomInfo"></p>
+
+    </div>
+
+
+    <div class="timer-box">
+
+        <h2 id="timer">00:00</h2>
+
+        <button onclick="startStudy()">▶ Start Study</button>
+        <button onclick="stopStudy()">⏹ Stop</button>
+
+    </div>
+
+
+    <div class="members-box">
+
+        <h3>📊 Live Members</h3>
+
+        <div id="members"></div>
+
+    </div>
+
+</div>
+
+
+<!-- Socket -->
+
+<script src="group.js"></script>
+
+</body>
+</html>

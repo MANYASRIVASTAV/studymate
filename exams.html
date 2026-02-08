@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Mock Test Tracker</title>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<header>
+    <h2>ALLEN Mock Test Tracker</h2>
+</header>
+
+
+<div class="nav">
+
+    <a href="dashboard.html">Dashboard</a>
+    <a href="planner.html">Planner</a>
+    <a href="notes.html">Notes</a>
+    <a href="exams.html">Exams</a>
+    <a href="profile.html">Profile</a>
+
+</div>
+
+
+<div class="container">
+
+    <!-- ADD MOCK -->
+    <div class="box">
+
+        <h3>Add Mock Test Result</h3>
+
+        <input type="date" id="mockDate">
+
+        <input id="bioMarks" placeholder="Biology Marks (0-360)">
+
+        <input id="phyMarks" placeholder="Physics Marks (0-180)">
+
+        <input id="chemMarks" placeholder="Chemistry Marks (0-180)">
+
+        <button onclick="addMock()">Save Result</button>
+
+    </div>
+
+
+    <!-- MOTIVATION -->
+    <div class="highlight" id="motivationBox">
+        Keep going 💪
+    </div>
+
+
+    <!-- RESULTS -->
+    <div class="box">
+
+        <h3>Mock Test History</h3>
+
+        <div id="mockList"></div>
+
+    </div>
+
+
+    <!-- SYLLABUS -->
+   <!-- SYLLABUS SETUP -->
+<div class="box">
+
+    <h3>Syllabus Setup</h3>
+
+    <p>Enter your subject and topics (comma separated)</p>
+
+    <input id="syllabusSubject"
+           placeholder="Subject (Biology / Physics / Chemistry)">
+
+    <textarea id="syllabusTopics"
+              rows="3"
+              placeholder="Example: Respiration, Digestion, Circulation"></textarea>
+
+    <button onclick="setupSyllabus()">
+        Save Syllabus
+    </button>
+
+</div>
+
+
+<!-- SYLLABUS TRACKER -->
+<div class="box">
+
+    <h3>Syllabus Progress</h3>
+
+    <ul id="syllabusList"></ul>
+
+</div>
+
+
+</div>
+
+
+<script src="main.js"></script>
+
+</body>
+
+</html>
