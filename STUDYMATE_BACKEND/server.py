@@ -26,7 +26,10 @@ app.add_middleware(
 # Project root (studymate folder)
 
 # Project root (same folder as server.py)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..")
+)
+
 
 
 
@@ -128,26 +131,50 @@ async def websocket_endpoint(ws: WebSocket):
 
         print("Client disconnected ❌")
 
-
 # ================= FRONTEND =================
 
 
+from fastapi.responses import FileResponse
+
+
+# Home
 @app.get("/")
 def home():
     return "StudyMate Backend Running"
 
 
-@app.get("/group")
-def serve_group():
+# Serve ANY html file
+@app.get("/{page_name}")
+def serve_pages(page_name: str):
 
-    return FileResponse(
-        os.path.join(BASE_DIR, "group.html")
-    )
+    # If user opens: /dashboard → dashboard.html
+    file_path = os.path.join(BASE_DIR, f"{page_name}.html")
+
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+
+    return {"error": "Page not found"}
 
 
-@app.get("/group.js")
-def serve_js():
+# Serve JS files
+@app.get("/{file_name}.js")
+def serve_js(file_name: str):
 
-    return FileResponse(
-        os.path.join(BASE_DIR, "group.js")
-    )
+    path = os.path.join(BASE_DIR, f"{file_name}.js")
+
+    if os.path.exists(path):
+        return FileResponse(path)
+
+    return {"error": "JS file not found"}
+
+
+# Serve CSS files
+@app.get("/{file_name}.css")
+def serve_css(file_name: str):
+
+    path = os.path.join(BASE_DIR, f"{file_name}.css")
+
+    if os.path.exists(path):
+        return FileResponse(path)
+
+    return {"error": "CSS file not found"}
