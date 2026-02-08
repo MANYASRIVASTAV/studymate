@@ -1,73 +1,59 @@
-// =====================================
-// StudyMate - Group Study (FINAL JS)
-// =====================================
+// ===================================
+// StudyMate Group - FINAL FIX
+// ===================================
 
 
-// -----------------------------
-// GLOBAL VARIABLES
-// -----------------------------
+// ---------------- VARIABLES ----------------
 
-let socket;              // WebSocket object
-let socketReady = false; // Is socket connected?
+let socket;
+let socketReady = false;
 
-let username = "";       // User name
-let currentRoom = "";    // Current room ID
+let username = "";
+let currentRoom = "";
 
-let seconds = 0;         // Timer seconds
-let timer = null;        // setInterval reference
+let seconds = 0;
+let timer = null;
 
 
-
-// -----------------------------
-// CONNECT TO BACKEND
-// -----------------------------
+// ---------------- SOCKET CONNECT ----------------
 
 function connectSocket() {
 
-    // Decide ws or wss automatically
     const protocol =
-        window.location.protocol === "https:" ? "wss://" : "ws://";
+        location.protocol === "https:" ? "wss://" : "ws://";
 
-    // Create socket connection
     socket = new WebSocket(
-        protocol + window.location.host + "/ws"
+        protocol + location.host + "/ws"
     );
 
 
-    // When connected
     socket.onopen = () => {
-
-        console.log("✅ WebSocket Connected");
+        console.log("✅ Connected");
         socketReady = true;
     };
 
 
-    // If error
-    socket.onerror = (err) => {
-
-        console.log("❌ WebSocket Error", err);
+    socket.onerror = (e) => {
+        console.log("❌ Socket Error", e);
     };
 
 
-    // When disconnected
     socket.onclose = () => {
 
-        console.log("⚠️ Socket Closed. Reconnecting...");
+        console.log("⚠️ Disconnected... Reconnecting");
 
         socketReady = false;
 
-        // Try reconnect after 2 sec
         setTimeout(connectSocket, 2000);
     };
 
 
-    // When message comes from server
     socket.onmessage = (event) => {
 
-        let data = JSON.parse(event.data);
+        const data = JSON.parse(event.data);
 
 
-        // When room created
+        // Room created
         if (data.type === "created") {
 
             currentRoom = data.room;
@@ -79,7 +65,7 @@ function connectSocket() {
         }
 
 
-        // When joined
+        // Room joined
         if (data.type === "joined") {
 
             currentRoom = data.room;
@@ -91,14 +77,14 @@ function connectSocket() {
         }
 
 
-        // When members update
+        // Update
         if (data.type === "update") {
 
             renderMembers(data.members);
         }
 
 
-        // When error
+        // Error
         if (data.type === "error") {
 
             alert(data.msg);
@@ -107,38 +93,47 @@ function connectSocket() {
 }
 
 
-// Start socket when page loads
+// Start socket
 connectSocket();
 
 
+// ---------------- BUTTON EVENTS ----------------
 
-// -----------------------------
-// CREATE ROOM
-// -----------------------------
+// Wait till page loads
+window.onload = () => {
+
+    document
+        .getElementById("createBtn")
+        .addEventListener("click", createRoom);
+
+    document
+        .getElementById("joinBtn")
+        .addEventListener("click", joinRoom);
+};
+
+
+// ---------------- CREATE ROOM ----------------
 
 function createRoom() {
 
-    // Check socket
     if (!socketReady) {
 
-        alert("Connecting... Please wait");
+        alert("Connecting... wait");
         return;
     }
 
 
-    // Get name
     username =
         document.getElementById("nameInput").value.trim();
 
 
     if (!username) {
 
-        alert("Enter your name first");
+        alert("Enter name");
         return;
     }
 
 
-    // Send to server
     socket.send(JSON.stringify({
 
         action: "create",
@@ -148,22 +143,17 @@ function createRoom() {
 }
 
 
-
-// -----------------------------
-// JOIN ROOM
-// -----------------------------
+// ---------------- JOIN ROOM ----------------
 
 function joinRoom() {
 
-    // Check socket
     if (!socketReady) {
 
-        alert("Connecting... Please wait");
+        alert("Connecting... wait");
         return;
     }
 
 
-    // Get values
     username =
         document.getElementById("nameInput").value.trim();
 
@@ -173,12 +163,11 @@ function joinRoom() {
 
     if (!username || !room) {
 
-        alert("Enter name and room ID");
+        alert("Enter name & room");
         return;
     }
 
 
-    // Send to server
     socket.send(JSON.stringify({
 
         action: "join",
@@ -189,10 +178,7 @@ function joinRoom() {
 }
 
 
-
-// -----------------------------
-// START STUDY
-// -----------------------------
+// ---------------- START ----------------
 
 function startStudy() {
 
@@ -218,10 +204,7 @@ function startStudy() {
 }
 
 
-
-// -----------------------------
-// STOP STUDY
-// -----------------------------
+// ---------------- STOP ----------------
 
 function stopStudy() {
 
@@ -231,14 +214,10 @@ function stopStudy() {
 }
 
 
-
-// -----------------------------
-// SEND UPDATE TO SERVER
-// -----------------------------
+// ---------------- SEND UPDATE ----------------
 
 function sendUpdate(status) {
 
-    // Check socket
     if (!socketReady) return;
 
 
@@ -254,10 +233,7 @@ function sendUpdate(status) {
 }
 
 
-
-// -----------------------------
-// UPDATE TIMER UI
-// -----------------------------
+// ---------------- UI ----------------
 
 function updateUI() {
 
@@ -270,10 +246,7 @@ function updateUI() {
 }
 
 
-
-// -----------------------------
-// SHOW MEMBERS
-// -----------------------------
+// ---------------- MEMBERS ----------------
 
 function renderMembers(members) {
 
