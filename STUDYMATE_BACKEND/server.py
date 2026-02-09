@@ -1,41 +1,32 @@
 # =====================================
-# StudyMate WebSocket Server (Fixed)
+# StudyMate WebSocket Server (Render Safe)
 # =====================================
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
-
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-import os
 import json
 import random
 import string
+import asyncio
 
-
-# -------------------------------------
-# Create app
-# -------------------------------------
 
 app = FastAPI()
 
 
 # -------------------------------------
-# Allow all domains (for deployment)
+# Middlewares (IMPORTANT for Render)
 # -------------------------------------
 
-# Allow frontend to talk with backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # Allow all domains
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# Trust proxy / hosting platform
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"]
@@ -43,43 +34,14 @@ app.add_middleware(
 
 
 # -------------------------------------
-# Base directory
-# -------------------------------------
-
-BASE_DIR = os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__))
-)
-
-
-# -------------------------------------
-# Store rooms in memory
+# In-memory storage
 # -------------------------------------
 
 rooms = {}
 
 
 # -------------------------------------
-# Serve frontend
-# -------------------------------------
-
-@app.get("/")
-def home():
-    return FileResponse(os.path.join(BASE_DIR, "login.html"))
-
-
-@app.get("/{page}")
-def pages(page: str):
-
-    file_path = os.path.join(BASE_DIR, page)
-
-    if os.path.exists(file_path):
-        return FileResponse(file_path)
-
-    return {"detail": "Not Found"}
-
-
-# -------------------------------------
-# WebSocket
+# WebSocket endpoint
 # -------------------------------------
 
 @app.websocket("/ws")
@@ -87,38 +49,41 @@ async def websocket_endpoint(ws: WebSocket):
 
     # Accept connection
     await ws.accept()
-
     print("✅ Client connected")
 
+    room_id = None
+    username = None
 
     try:
 
         while True:
 
-            # Receive message
-            data = await ws.receive_text()
+            # Wait for message (timeout safety)
+            data = await asyncio.wait_for(
+                ws.receive_text(),
+                timeout=60
+            )
 
-            # Convert JSON string → Python dict
             data = json.loads(data)
 
             action = data.get("action")
 
 
-            # ---------------- CREATE ROOM ----------------
+            # ---------- CREATE ----------
             if action == "create":
 
-                # Generate random room ID
-                room = ''.join(
+                room_id = ''.join(
                     random.choices(
                         string.ascii_uppercase + string.digits,
                         k=6
                     )
                 )
 
-                # Create room
-                rooms[room] = {
+                username = data["username"]
+
+                rooms[room_id] = {
                     "members": {
-                        data["username"]: {
+                        username: {
                             "time": 0,
                             "status": "online"
                         }
@@ -126,21 +91,20 @@ async def websocket_endpoint(ws: WebSocket):
                     "clients": [ws]
                 }
 
-                # Send to creator
                 await ws.send_json({
                     "type": "created",
-                    "room": room,
-                    "members": rooms[room]["members"]
+                    "room": room_id,
+                    "members": rooms[room_id]["members"]
                 })
 
 
-            # ---------------- JOIN ROOM ----------------
+            # ---------- JOIN ----------
             elif action == "join":
 
-                room = data["room"]
+                room_id = data["room"]
+                username = data["username"]
 
-                # If room not exist
-                if room not in rooms:
+                if room_id not in rooms:
 
                     await ws.send_json({
                         "type": "error",
@@ -150,52 +114,54 @@ async def websocket_endpoint(ws: WebSocket):
                     continue
 
 
-                # Add member
-                rooms[room]["members"][data["username"]] = {
+                rooms[room_id]["members"][username] = {
                     "time": 0,
                     "status": "online"
                 }
 
-
-                # Save client socket
-                rooms[room]["clients"].append(ws)
+                rooms[room_id]["clients"].append(ws)
 
 
-                # Notify all users
-                for client in rooms[room]["clients"]:
+                for client in rooms[room_id]["clients"]:
 
                     await client.send_json({
                         "type": "joined",
-                        "room": room,
-                        "members": rooms[room]["members"]
+                        "room": room_id,
+                        "members": rooms[room_id]["members"]
                     })
 
 
-            # ---------------- UPDATE ----------------
+            # ---------- UPDATE ----------
             elif action == "update":
 
-                room = data["room"]
-
-                if room not in rooms:
+                if room_id not in rooms:
                     continue
 
 
-                # Update user data
-                rooms[room]["members"][data["username"]] = {
+                rooms[room_id]["members"][username] = {
                     "time": data["time"],
                     "status": data["status"]
                 }
 
 
-                # Send update to all
-                for client in rooms[room]["clients"]:
+                for client in rooms[room_id]["clients"]:
 
                     await client.send_json({
                         "type": "update",
-                        "members": rooms[room]["members"]
+                        "members": rooms[room_id]["members"]
                     })
 
 
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, asyncio.TimeoutError):
 
         print("❌ Client disconnected")
+
+        # Cleanup
+        if room_id and room_id in rooms:
+
+            if ws in rooms[room_id]["clients"]:
+                rooms[room_id]["clients"].remove(ws)
+
+            if username in rooms[room_id]["members"]:
+                del rooms[room_id]["members"][username]
+
