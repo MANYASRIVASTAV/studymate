@@ -1,28 +1,76 @@
+# =====================================
+# StudyMate WebSocket Server (Fixed)
+# =====================================
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
+
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+
 import os
+import json
+import random
+import string
+
+
+# -------------------------------------
+# Create app
+# -------------------------------------
 
 app = FastAPI()
 
-# =============================
-# ROOT PATH (studymate folder)
-# =============================
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# -------------------------------------
+# Allow all domains (for deployment)
+# -------------------------------------
 
-# =============================
-# SERVE ANY FILE FROM ROOT
-# =============================
+# Allow frontend to talk with backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # Allow all domains
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Trust proxy / hosting platform
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"]
+)
+
+
+# -------------------------------------
+# Base directory
+# -------------------------------------
+
+BASE_DIR = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
+
+# -------------------------------------
+# Store rooms in memory
+# -------------------------------------
+
+rooms = {}
+
+
+# -------------------------------------
+# Serve frontend
+# -------------------------------------
 
 @app.get("/")
 def home():
-    return FileResponse(os.path.join(BASE_DIR, "INDEX.html"))
+    return FileResponse(os.path.join(BASE_DIR, "login.html"))
 
 
-@app.get("/{file_name}")
-def serve_files(file_name: str):
+@app.get("/{page}")
+def pages(page: str):
 
-    file_path = os.path.join(BASE_DIR, file_name)
+    file_path = os.path.join(BASE_DIR, page)
 
     if os.path.exists(file_path):
         return FileResponse(file_path)
@@ -30,36 +78,47 @@ def serve_files(file_name: str):
     return {"detail": "Not Found"}
 
 
-# =============================
-# WEBSOCKET
-# =============================
-
-rooms = {}
-
+# -------------------------------------
+# WebSocket
+# -------------------------------------
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
 
+    # Accept connection
     await ws.accept()
+
+    print("✅ Client connected")
+
 
     try:
 
         while True:
 
-            data = await ws.receive_json()
+            # Receive message
+            data = await ws.receive_text()
+
+            # Convert JSON string → Python dict
+            data = json.loads(data)
 
             action = data.get("action")
-            user = data.get("username")
-            room = data.get("room")
 
-            # CREATE
+
+            # ---------------- CREATE ROOM ----------------
             if action == "create":
 
-                room_id = user + "_room"
+                # Generate random room ID
+                room = ''.join(
+                    random.choices(
+                        string.ascii_uppercase + string.digits,
+                        k=6
+                    )
+                )
 
-                rooms[room_id] = {
+                # Create room
+                rooms[room] = {
                     "members": {
-                        user: {
+                        data["username"]: {
                             "time": 0,
                             "status": "online"
                         }
@@ -67,33 +126,44 @@ async def websocket_endpoint(ws: WebSocket):
                     "clients": [ws]
                 }
 
+                # Send to creator
                 await ws.send_json({
                     "type": "created",
-                    "room": room_id,
-                    "members": rooms[room_id]["members"]
+                    "room": room,
+                    "members": rooms[room]["members"]
                 })
 
 
-            # JOIN
+            # ---------------- JOIN ROOM ----------------
             elif action == "join":
 
+                room = data["room"]
+
+                # If room not exist
                 if room not in rooms:
 
                     await ws.send_json({
                         "type": "error",
                         "msg": "Room not found"
                     })
+
                     continue
 
 
-                rooms[room]["members"][user] = {
+                # Add member
+                rooms[room]["members"][data["username"]] = {
                     "time": 0,
                     "status": "online"
                 }
 
+
+                # Save client socket
                 rooms[room]["clients"].append(ws)
 
+
+                # Notify all users
                 for client in rooms[room]["clients"]:
+
                     await client.send_json({
                         "type": "joined",
                         "room": room,
@@ -101,19 +171,25 @@ async def websocket_endpoint(ws: WebSocket):
                     })
 
 
-            # UPDATE
+            # ---------------- UPDATE ----------------
             elif action == "update":
+
+                room = data["room"]
 
                 if room not in rooms:
                     continue
 
 
-                rooms[room]["members"][user] = {
+                # Update user data
+                rooms[room]["members"][data["username"]] = {
                     "time": data["time"],
                     "status": data["status"]
                 }
 
+
+                # Send update to all
                 for client in rooms[room]["clients"]:
+
                     await client.send_json({
                         "type": "update",
                         "members": rooms[room]["members"]
@@ -122,4 +198,4 @@ async def websocket_endpoint(ws: WebSocket):
 
     except WebSocketDisconnect:
 
-        print("Disconnected")
+        print("❌ Client disconnected")

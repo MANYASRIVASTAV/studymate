@@ -1,20 +1,24 @@
 // ===============================
-// SIMPLE GROUP STUDY JS
+// GROUP STUDY - FINAL
 // ===============================
 
 
-// Create WebSocket URL
-let socketURL;
+// Detect ws / wss
 
-if (location.protocol === "https:") {
-    socketURL = "wss://" + location.host + "/ws";
-} else {
-    socketURL = "ws://" + location.host + "/ws";
-}
+
+// ===============================
+// WebSocket Config (LOCAL FIX)
+// ===============================
+
+// Backend runs on port 10000
+let socketURL = "ws://localhost:10000/ws";
+
+// Create socket
+let socket = new WebSocket(socketURL);
 
 
 // Connect
-let socket = new WebSocket(socketURL);
+
 
 
 // Globals
@@ -87,7 +91,7 @@ socket.onerror = function (e) {
 
 
 // ===============================
-// BUTTON FUNCTIONS
+// BUTTONS
 // ===============================
 
 
@@ -255,3 +259,29 @@ function renderMembers(members) {
         `;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
