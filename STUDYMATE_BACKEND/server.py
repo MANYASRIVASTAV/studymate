@@ -1,7 +1,9 @@
 # =====================================
 # StudyMate WebSocket Server (Render Safe)
-# =====================================
-
+# =======================
+# ==============
+from fastapi.responses import FileResponse
+import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -13,6 +15,27 @@ import asyncio
 
 
 app = FastAPI()
+
+# -------------------------
+# Serve Frontend Files
+# -------------------------
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+@app.get("/")
+def home():
+    return FileResponse(os.path.join(BASE_DIR, "group.html"))
+
+
+@app.get("/{page}")
+def pages(page: str):
+
+    file_path = os.path.join(BASE_DIR, page)
+
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+
+    return {"detail": "Not Found"}
 
 
 # -------------------------------------
