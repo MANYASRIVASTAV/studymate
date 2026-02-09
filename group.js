@@ -1,27 +1,25 @@
-// ===============================
-// GROUP STUDY - FINAL
-// ===============================
-
-
-// Detect ws / wss
 
 
 // ===============================
-// WebSocket Config (LOCAL FIX)
+// WebSocket Universal Config
 // ===============================
 
-// Backend runs on port 10000
-let socketURL = "ws://localhost:10000/ws";
+let socketURL;
 
-// Create socket
-let socket = new WebSocket(socketURL);
+// If running on Render / HTTPS
+if (location.protocol === "https:") {
+    socketURL = "wss://" + location.host + "/ws";
+}
+// Local testing
+else {
+    socketURL = "ws://" + location.hostname + ":10000/ws";
+}
 
+console.log("Connecting to:", socketURL);
 
 // Connect
+let socket = new WebSocket(socketURL);
 
-
-
-// Globals
 let socketReady = false;
 
 let username = "";
