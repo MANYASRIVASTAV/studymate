@@ -37,6 +37,3 @@ It includes dashboard, planner, notes, profile, and live group study features.
 - GitHub
 
 
-
-## 📁 Project Structure
-
